@@ -2,27 +2,27 @@
 export class CanvasLocal {
   //atributos
   protected graphics: CanvasRenderingContext2D;
-  protected rWidth:number;
-  protected rHeight:number;
+  protected rWidth: number;
+  protected rHeight: number;
   protected maxX: number;
   protected maxY: number;
   protected pixelSize: number;
   protected centerX: number;
   protected centerY: number;
-  
-      
-  public constructor(g: CanvasRenderingContext2D, canvas: HTMLCanvasElement){
+
+
+  public constructor(g: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.graphics = g;
     this.rWidth = 6;
-    this.rHeight= 4;
+    this.rHeight = 4;
     this.maxX = canvas.width - 1
     this.maxY = canvas.height - 1;
     this.pixelSize = Math.max(this.rWidth / this.maxX, this.rHeight / this.maxY);
-    this.centerX = this.maxX/2;
-    this.centerY = this.maxY/2;
+    this.centerX = this.maxX / 2;
+    this.centerY = this.maxY / 2;
   }
 
-  drawLine(x1: number, y1: number, x2: number, y2:number) {
+  drawLine(x1: number, y1: number, x2: number, y2: number) {
     this.graphics.beginPath();
     this.graphics.moveTo(x1, y1);
     this.graphics.lineTo(x2, y2);
@@ -30,44 +30,56 @@ export class CanvasLocal {
     this.graphics.stroke();
   }
 
+  // Dibuja un polígono general a partir de un arreglo de puntos
+  drawPolygon(points: { x: number, y: number }[]) {
+    for (let i = 0; i < points.length; i++) {
+      let p1 = points[i];
+      let p2 = points[(i + 1) % points.length]; // Conecta el último con el primero
+      this.drawLine(p1.x, p1.y, p2.x, p2.y);
+    }
+  }
+
   paint() {
     let side = Math.min(this.maxX, this.maxY) * 0.9;
-    let halfSide = side / 2;
-    
-    let xA = this.centerX - halfSide;
-    let yA = this.centerY - halfSide;
-    let xB = this.centerX + halfSide;
-    let yB = this.centerY - halfSide;
-    let xC = this.centerX + halfSide;
-    let yC = this.centerY + halfSide;
-    let xD = this.centerX - halfSide;
-    let yD = this.centerY + halfSide;
+    let radius = side / 2; // Radio de la circunferencia que circunscribe al hexágono
+    let sides = 6; // Número de lados (Hexágono)
 
-    for (let i = 0; i < 7; i++) {
-      if (i < 2) {
+    // Generar los vértices iniciales del hexágono regular
+    let points: { x: number, y: number }[] = [];
+    for (let i = 0; i < sides; i++) {
+      // Angulo en radianes (Math.PI / 2 permite que un vértice apunte hacia arriba o rote)
+      let angle = (i * 2 * Math.PI / sides) - (Math.PI / 2);
+      points.push({
+        x: this.centerX + radius * Math.cos(angle),
+        y: this.centerY + radius * Math.sin(angle)
+      });
+    }
+
+    // Dibujar 10 figuras anidadas
+    for (let i = 0; i < 15; i++) {
+      // Alternar colores
+      if (i % 2 === 0) {
         this.graphics.strokeStyle = 'red';
       } else {
         this.graphics.strokeStyle = 'black';
       }
-      
-      this.drawLine(xA, yA, xB, yB);
-      this.drawLine(xB, yB, xC, yC);
-      this.drawLine(xC, yC, xD, yD);
-      this.drawLine(xD, yD, xA, yA);
 
-      let xA1 = (xA + xB) / 2;
-      let yA1 = (yA + yB) / 2;
-      let xB1 = (xB + xC) / 2;
-      let yB1 = (yB + yC) / 2;
-      let xC1 = (xC + xD) / 2;
-      let yC1 = (yC + yD) / 2;
-      let xD1 = (xD + xA) / 2;
-      let yD1 = (yD + yA) / 2;
+      // Dibujar el polígono actual
+      this.drawPolygon(points);
 
-      xA = xA1; yA = yA1;
-      xB = xB1; yB = yB1;
-      xC = xC1; yC = yC1;
-      xD = xD1; yD = yD1;
+      // Calcular los nuevos vértices (puntos medios del polígono actual)
+      let nextPoints: { x: number, y: number }[] = [];
+      for (let j = 0; j < sides; j++) {
+        let p1 = points[j];
+        let p2 = points[(j + 1) % sides];
+
+        // Punto medio (puede cambiarse el divisor para crear efectos de rotación asimétricos)
+        nextPoints.push({
+          x: (p1.x + p2.x) / 2,
+          y: (p1.y + p2.y) / 2
+        });
+      }
+      points = nextPoints; // Actualizar los vértices para la siguiente iteración
     }
   }
 
