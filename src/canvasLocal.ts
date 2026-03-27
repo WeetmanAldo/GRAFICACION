@@ -1,86 +1,204 @@
-
 export class CanvasLocal {
-  //atributos
   protected graphics: CanvasRenderingContext2D;
-  protected rWidth: number;
-  protected rHeight: number;
+  protected canvasWidth: number;
+  protected canvasHeight: number;
+
+  // Logical viewing area
+  protected minX: number;
   protected maxX: number;
+  protected minY: number;
   protected maxY: number;
-  protected pixelSize: number;
-  protected centerX: number;
-  protected centerY: number;
 
-
+  /**
+   * Inicializa el canvas y define el área lógica visible por defecto (ej. de -10 a 10).
+   * @param g El contexto de renderizado 2D del canvas.
+   * @param canvas El elemento canvas del DOM.
+   */
   public constructor(g: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.graphics = g;
-    this.rWidth = 6;
-    this.rHeight = 4;
-    this.maxX = canvas.width - 1
-    this.maxY = canvas.height - 1;
-    this.pixelSize = Math.max(this.rWidth / this.maxX, this.rHeight / this.maxY);
-    this.centerX = this.maxX / 2;
-    this.centerY = this.maxY / 2;
+    this.canvasWidth = canvas.width;
+    this.canvasHeight = canvas.height;
+
+    // Default logical bounds (e.g. -10 to 10 on X, Y scaled appropriately)
+    this.minX = -10;
+    this.maxX = 10;
+    const ratio = this.canvasHeight / this.canvasWidth;
+    this.minY = -10 * ratio;
+    this.maxY = 10 * ratio;
   }
 
-  drawLine(x1: number, y1: number, x2: number, y2: number) {
+  /**
+   * Convierte una coordenada X lógica (del plano cartesiano) a una coordenada X en píxeles del canvas.
+   */
+  private iX(x: number): number {
+    return Math.round(((x - this.minX) / (this.maxX - this.minX)) * this.canvasWidth);
+  }
+
+  /**
+   * Convierte una coordenada Y lógica a una coordenada Y en píxeles. 
+   * Se invierte la escala porque en el canvas el eje Y crece hacia abajo.
+   */
+  private iY(y: number): number {
+    return Math.round(((this.maxY - y) / (this.maxY - this.minY)) * this.canvasHeight);
+  }
+
+  /**
+   * Convierte una coordenada X en píxeles a su valor lógico correspondiente en el plano cartesiano.
+   */
+  private lX(ix: number): number {
+    return this.minX + (ix / this.canvasWidth) * (this.maxX - this.minX);
+  }
+
+  /**
+   * Convierte una coordenada Y en píxeles a su valor lógico correspondiente en el plano cartesiano.
+   */
+  private lY(iy: number): number {
+    return this.maxY - (iy / this.canvasHeight) * (this.maxY - this.minY);
+  }
+
+  /**
+   * Limpia todo el contenido actual del canvas.
+   */
+  public clear() {
+    this.graphics.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+  }
+
+  /**
+   * Dibuja una cuadrícula de fondo simulando el papel milimetrado.
+   * Traza líneas grises tenues dividiendo el área visible en 10 secciones por eje.
+   */
+  public drawGrid() {
     this.graphics.beginPath();
-    this.graphics.moveTo(x1, y1);
-    this.graphics.lineTo(x2, y2);
-    this.graphics.closePath();
+    this.graphics.strokeStyle = '#d3d3d3'; // Gris claro
+    this.graphics.lineWidth = 1;
+
+    // Dibujar cuadriculas cada 1 unidad matemática
+    let stepX = 1;
+    let stepY = 1;
+
+    for (let x = Math.ceil(this.minX / stepX) * stepX; x <= this.maxX; x += stepX) {
+      const px = this.iX(x);
+      this.graphics.moveTo(px, 0);
+      this.graphics.lineTo(px, this.canvasHeight);
+    }
+
+    for (let y = Math.ceil(this.minY / stepY) * stepY; y <= this.maxY; y += stepY) {
+      const py = this.iY(y);
+      this.graphics.moveTo(0, py);
+      this.graphics.lineTo(this.canvasWidth, py);
+    }
     this.graphics.stroke();
   }
 
-  // Dibuja un polígono general a partir de un arreglo de puntos
-  drawPolygon(points: { x: number, y: number }[]) {
-    for (let i = 0; i < points.length; i++) {
-      let p1 = points[i];
-      let p2 = points[(i + 1) % points.length]; // Conecta el último con el primero
-      this.drawLine(p1.x, p1.y, p2.x, p2.y);
-    }
+  /**
+   * Dibuja los ejes coordenados principales (Eje X y Eje Y) en color gris oscuro.
+   */
+  public drawAxes() {
+    this.graphics.beginPath();
+    this.graphics.strokeStyle = '#000000'; // Negro fuerte para la cruz
+    this.graphics.lineWidth = 2; // Más gruesa
+
+
+    // X Axis
+    const y0 = this.iY(0);
+    this.graphics.moveTo(0, y0);
+    this.graphics.lineTo(this.canvasWidth, y0);
+
+    // Y Axis
+    const x0 = this.iX(0);
+    this.graphics.moveTo(x0, 0);
+    this.graphics.lineTo(x0, this.canvasHeight);
+
+    this.graphics.stroke();
   }
 
-  paint() {
-    let side = Math.min(this.maxX, this.maxY) * 0.9;
-    let radius = side / 2; // Radio de la circunferencia que circunscribe al hexágono
-    let sides = 6; // Número de lados (Hexágono)
+  /**
+   * Evalúa y dibuja una función matemática iterando sobre cada píxel del ancho del canvas.
+   * @param f La función matemática a evaluar, ej: (x) => Math.sin(x)
+   * @param color El color con el que se trazará la línea de la función.
+   */
+  public drawFunction(f: (x: number) => number, color: string = 'blue') {
+    this.graphics.beginPath();
+    this.graphics.strokeStyle = color;
+    this.graphics.lineWidth = 2;
 
-    // Generar los vértices iniciales del hexágono regular
-    let points: { x: number, y: number }[] = [];
-    for (let i = 0; i < sides; i++) {
-      // Angulo en radianes (Math.PI / 2 permite que un vértice apunte hacia arriba o rote)
-      let angle = (i * 2 * Math.PI / sides) - (Math.PI / 2);
-      points.push({
-        x: this.centerX + radius * Math.cos(angle),
-        y: this.centerY + radius * Math.sin(angle)
-      });
-    }
+    let firstPoint = true;
 
-    // Dibujar 10 figuras anidadas
-    for (let i = 0; i < 15; i++) {
-      // Alternar colores
-      if (i % 2 === 0) {
-        this.graphics.strokeStyle = 'red';
+    for (let ix = 0; ix <= this.canvasWidth; ix++) {
+      let x = this.lX(ix);
+      let y = f(x);
+
+      // Check for discontinuities or out of bounds (NaN, Infinite)
+      if (isNaN(y) || !isFinite(y)) {
+        firstPoint = true;
+        continue;
+      }
+
+      let iy = this.iY(y);
+      if (firstPoint) {
+        this.graphics.moveTo(ix, iy);
+        firstPoint = false;
       } else {
-        this.graphics.strokeStyle = 'black';
+        this.graphics.lineTo(ix, iy);
       }
-
-      // Dibujar el polígono actual
-      this.drawPolygon(points);
-
-      // Calcular los nuevos vértices (puntos medios del polígono actual)
-      let nextPoints: { x: number, y: number }[] = [];
-      for (let j = 0; j < sides; j++) {
-        let p1 = points[j];
-        let p2 = points[(j + 1) % sides];
-
-        // Punto medio (puede cambiarse el divisor para crear efectos de rotación asimétricos)
-        nextPoints.push({
-          x: (p1.x + p2.x) / 2,
-          y: (p1.y + p2.y) / 2
-        });
-      }
-      points = nextPoints; // Actualizar los vértices para la siguiente iteración
     }
+
+    this.graphics.stroke();
   }
 
+  /**
+   * Acerca la vista de la gráfica (Zoom In), reduciendo el rango del área lógica visible.
+   */
+  public zoomIn() {
+    this.zoom(0.8);
+  }
+
+  /**
+   * Aleja la vista de la gráfica (Zoom Out), ampliando el rango del área lógica visible.
+   */
+  public zoomOut() {
+    this.zoom(1.25);
+  }
+
+  /**
+   * Acerca o aleja la vista teniendo como "ancla" matemática el punto del cursor del mouse.
+   * @param ix La posición X del ratón en píxeles de pantalla.
+   * @param iy La posición Y del ratón en píxeles de pantalla.
+   * @param factor El grado de ampliación o reducción.
+   */
+  public zoomAt(ix: number, iy: number, factor: number) {
+    const lx = this.lX(ix);
+    const ly = this.lY(iy);
+
+    const currentW = this.maxX - this.minX;
+    const currentH = this.maxY - this.minY;
+    const newW = currentW * factor;
+    const newH = currentH * factor;
+
+    const fracX = ix / this.canvasWidth;
+    const fracY = iy / this.canvasHeight;
+
+    this.minX = lx - fracX * newW;
+    this.maxX = this.minX + newW;
+
+    this.maxY = ly + fracY * newH;
+    this.minY = this.maxY - newH;
+  }
+
+  /**
+   * Función auxiliar interna que aplica un factor de escala a los límites visuales actuales
+   * manteniendo el mismo centro. Un factor < 1 es acercar, un factor > 1 es alejar.
+   * @param factor El multiplicador de escala.
+   */
+  private zoom(factor: number) {
+    let centerX = (this.minX + this.maxX) / 2;
+    let centerY = (this.minY + this.maxY) / 2;
+    let width = (this.maxX - this.minX) * factor;
+    let height = (this.maxY - this.minY) * factor;
+
+    this.minX = centerX - width / 2;
+    this.maxX = centerX + width / 2;
+    this.minY = centerY - height / 2;
+    this.maxY = centerY + height / 2;
+  }
 }
