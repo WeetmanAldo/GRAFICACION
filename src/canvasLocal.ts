@@ -85,54 +85,94 @@ export class CanvasLocal {
 
   /**
    * Limpia el lienzo por completo para dibujar gráficos nuevos sin sobreponerlos.
-   * Utiliza el máximo de píxeles disponibles.
    */
   clear() {
     this.graphics.clearRect(0, 0, this.maxX + 1, this.maxY + 1);
   }
 
   /**
-   * Dibuja una gráfica de barras en 2D dinámica, que se escala automáticamente 
-   * en función de los valores en tiempo real dados en el arreglo.
-   * Asigna un color tipo HSL a cada barra.
-   * @param values Arreglo de números extraidos del input para formar cada barra
+   * Dibuja prismas o barras tridimensionales interpolando caras.
+   */
+  draw3DBar(x: number, y: number, w: number, h: number, hue: number) {
+    const depthX = w * 0.4;
+    const depthY = w * 0.4;
+
+    this.graphics.strokeStyle = '#222';
+    this.graphics.lineWidth = 1;
+
+    // Cara superior (Techo) - Se dibuja primero para no superponer contornos raros
+    this.graphics.beginPath();
+    this.graphics.moveTo(x, y);
+    this.graphics.lineTo(x + depthX, y - depthY);
+    this.graphics.lineTo(x + w + depthX, y - depthY);
+    this.graphics.lineTo(x + w, y);
+    this.graphics.closePath();
+    this.graphics.fillStyle = `hsl(${hue}, 70%, 65%)`; // Más claro (luz)
+    this.graphics.fill();
+    this.graphics.stroke();
+
+    // Cara lateral derecha
+    this.graphics.beginPath();
+    this.graphics.moveTo(x + w, y);
+    this.graphics.lineTo(x + w + depthX, y - depthY);
+    this.graphics.lineTo(x + w + depthX, y + h - depthY);
+    this.graphics.lineTo(x + w, y + h);
+    this.graphics.closePath();
+    this.graphics.fillStyle = `hsl(${hue}, 70%, 40%)`; // Más oscuro (sombra)
+    this.graphics.fill();
+    this.graphics.stroke();
+
+    // Cara frontal
+    this.graphics.beginPath();
+    this.graphics.rect(x, y, w, h);
+    this.graphics.fillStyle = `hsl(${hue}, 70%, 50%)`; // Tono medio
+    this.graphics.fill();
+    this.graphics.stroke();
+  }
+
+  /**
+   * Dibuja una gráfica de barras en 3D dinámica.
    */
   drawBarChart(values: number[]) {
     if (values.length === 0) return;
 
-    const padding = 40; // Espaciado en los bordes del canvas
-    const drawWidth = this.maxX - padding * 2;
+    // Espaciado ajustado para no cortar el 3D de las barras extremas
+    const padding = 50;
+    const drawWidth = this.maxX - padding * 2.5;
     const drawHeight = this.maxY - padding * 2;
 
-    const maxVal = Math.max(...values, 1); // Evitar división por 0
-
-    // Ancho de cada barra basado en el espacio disponible y la cantidad de barras
+    const maxVal = Math.max(...values, 1);
     const barWidth = drawWidth / values.length;
 
-    // Dibujar el marco contenedor
+    // Ejes de fondo para la perspectiva del piso
     this.graphics.strokeStyle = '#333';
     this.graphics.lineWidth = 2;
-    this.graphics.strokeRect(padding, padding, drawWidth, drawHeight);
+    this.graphics.beginPath();
+    this.graphics.moveTo(padding, padding);
+    this.graphics.lineTo(padding, padding + drawHeight);
+    this.graphics.lineTo(padding + drawWidth + barWidth * 0.4, padding + drawHeight);
+    this.graphics.stroke();
 
-    // Iterar en cada valor y dibujar la barra representativa
     for (let i = 0; i < values.length; i++) {
       const val = values[i];
-      // Calcular la altura proporcional de acuerdo con el valor máximo
       const barHeight = (val / maxVal) * drawHeight;
 
-      // Calcular posiciones de dibujado invertidas (Y empieza arriba pero se dibuja de abajo hacia arriba)
+      // Un pequeño margen extra para que las barras no se peguen tanto
       const x = padding + i * barWidth;
       const y = padding + drawHeight - barHeight;
+      const actualBarWidth = barWidth * 0.7;
 
-      // Dinamizar colores (Tonalidad HSL espaciada a lo largo del espectro cromático)
-      this.graphics.fillStyle = `hsl(${(i * 360) / values.length}, 70%, 50%)`;
-      this.graphics.fillRect(x + 5, y, barWidth - 10, barHeight); // Agregar pequeño margen lateral a cada barra
+      const hue = (i * 360) / values.length;
 
-      // Escribir el texto con el valor exacto encima de cada barra
+      // Dibujar la propia barra 3D
+      this.draw3DBar(x + 5, y, actualBarWidth, barHeight, hue);
+
+      // Texto representativo encima de cada barra
       this.graphics.fillStyle = 'black';
       this.graphics.font = 'bold 14px sans-serif';
       this.graphics.textAlign = 'center';
-      this.graphics.fillText(val.toString(), x + barWidth / 2, y - 5);
+      // Ajustamos el Y para que el texto figure levemente por encima de la barra
+      this.graphics.fillText(val.toString(), x + 5 + actualBarWidth / 2, y - barWidth * 0.4 - 5);
     }
   }
 }
