@@ -83,4 +83,56 @@ export class CanvasLocal {
     }
   }
 
+  /**
+   * Limpia el lienzo por completo para dibujar gráficos nuevos sin sobreponerlos.
+   * Utiliza el máximo de píxeles disponibles.
+   */
+  clear() {
+    this.graphics.clearRect(0, 0, this.maxX + 1, this.maxY + 1);
+  }
+
+  /**
+   * Dibuja una gráfica de barras en 2D dinámica, que se escala automáticamente 
+   * en función de los valores en tiempo real dados en el arreglo.
+   * Asigna un color tipo HSL a cada barra.
+   * @param values Arreglo de números extraidos del input para formar cada barra
+   */
+  drawBarChart(values: number[]) {
+    if (values.length === 0) return;
+
+    const padding = 40; // Espaciado en los bordes del canvas
+    const drawWidth = this.maxX - padding * 2;
+    const drawHeight = this.maxY - padding * 2;
+
+    const maxVal = Math.max(...values, 1); // Evitar división por 0
+
+    // Ancho de cada barra basado en el espacio disponible y la cantidad de barras
+    const barWidth = drawWidth / values.length;
+
+    // Dibujar el marco contenedor
+    this.graphics.strokeStyle = '#333';
+    this.graphics.lineWidth = 2;
+    this.graphics.strokeRect(padding, padding, drawWidth, drawHeight);
+
+    // Iterar en cada valor y dibujar la barra representativa
+    for (let i = 0; i < values.length; i++) {
+      const val = values[i];
+      // Calcular la altura proporcional de acuerdo con el valor máximo
+      const barHeight = (val / maxVal) * drawHeight;
+
+      // Calcular posiciones de dibujado invertidas (Y empieza arriba pero se dibuja de abajo hacia arriba)
+      const x = padding + i * barWidth;
+      const y = padding + drawHeight - barHeight;
+
+      // Dinamizar colores (Tonalidad HSL espaciada a lo largo del espectro cromático)
+      this.graphics.fillStyle = `hsl(${(i * 360) / values.length}, 70%, 50%)`;
+      this.graphics.fillRect(x + 5, y, barWidth - 10, barHeight); // Agregar pequeño margen lateral a cada barra
+
+      // Escribir el texto con el valor exacto encima de cada barra
+      this.graphics.fillStyle = 'black';
+      this.graphics.font = 'bold 14px sans-serif';
+      this.graphics.textAlign = 'center';
+      this.graphics.fillText(val.toString(), x + barWidth / 2, y - 5);
+    }
+  }
 }
