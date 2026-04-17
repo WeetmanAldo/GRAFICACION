@@ -22,6 +22,13 @@ export class CanvasLocal {
     this.centerY = this.maxY / 2;
   }
 
+  /**
+   * Dibuja una línea recta entre dos puntos dados en el canvas.
+   * @param x1 Coordenada X del punto de inicio
+   * @param y1 Coordenada Y del punto de inicio
+   * @param x2 Coordenada X del punto final
+   * @param y2 Coordenada Y del punto final
+   */
   drawLine(x1: number, y1: number, x2: number, y2: number) {
     this.graphics.beginPath();
     this.graphics.moveTo(x1, y1);
@@ -30,7 +37,11 @@ export class CanvasLocal {
     this.graphics.stroke();
   }
 
-  // Dibuja un polígono general a partir de un arreglo de puntos
+  /**
+   * Dibuja un polígono trazando líneas entre un arreglo secuencial de puntos.
+   * Conecta el último punto de vuelta con el primero para cerrar la figura.
+   * @param points Arreglo de coordenadas {x, y} de cada vértice del polígono.
+   */
   drawPolygon(points: { x: number, y: number }[]) {
     for (let i = 0; i < points.length; i++) {
       let p1 = points[i];
@@ -39,6 +50,11 @@ export class CanvasLocal {
     }
   }
 
+  /**
+   * Genera y dibuja una sucesión de hexágonos anidados en el canvas.
+   * El cálculo de cada nuevo polígono se hace encontrando el punto medio
+   * de los lados del polígono anterior y uniendo esos puntos medios.
+   */
   paint() {
     let side = Math.min(this.maxX, this.maxY) * 0.9;
     let radius = side / 2; // Radio de la circunferencia que circunscribe al hexágono
@@ -47,17 +63,18 @@ export class CanvasLocal {
     // Generar los vértices iniciales del hexágono regular
     let points: { x: number, y: number }[] = [];
     for (let i = 0; i < sides; i++) {
-      // Angulo en radianes (Math.PI / 2 permite que un vértice apunte hacia arriba o rote)
-      let angle = (i * 2 * Math.PI / sides) - (Math.PI / 2);
+      // Ángulo en radianes (Math.PI * 2 / lados para no tener rotación inicial)
+      // Modificamos a (i * 2 * PI / sides) para mantener el borde superior/inferior horizontal congruente con la imagen
+      let angle = (i * 2 * Math.PI / sides);
       points.push({
         x: this.centerX + radius * Math.cos(angle),
         y: this.centerY + radius * Math.sin(angle)
       });
     }
 
-    // Dibujar 10 figuras anidadas
+    // Dibujar las figuras anidadas en profundidad
     for (let i = 0; i < 15; i++) {
-      // Alternar colores
+      // Alternar colores entre rojo y negro para cada iteración visible
       if (i % 2 === 0) {
         this.graphics.strokeStyle = 'red';
       } else {
@@ -67,7 +84,7 @@ export class CanvasLocal {
       // Dibujar el polígono actual
       this.drawPolygon(points);
 
-      // Calcular los nuevos vértices (puntos medios del polígono actual)
+      // Calcular los nuevos vértices conectando los puntos medios del polígono actual
       let nextPoints: { x: number, y: number }[] = [];
       for (let j = 0; j < sides; j++) {
         let p1 = points[j];
