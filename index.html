@@ -51,18 +51,23 @@
     <div class="card-header">
       Canvas de vizualizaion
     </div>
-    <div class="chart card-img-bottom">
+    <div class="chart card-img-bottom position-relative text-start">
       <canvas id="circlechart" width="640" height="480"></canvas>
-    </div>
-    <div class="card-body">
-      <h5 class="card-title">Gráfica de Barras Interactiva</h5>
-      <div class="mb-3">
-        <label for="barValues" class="form-label" style="font-weight: 500;">Valores (separados por coma):</label>
-        <input type="text" id="barValues" class="form-control form-control-lg text-center"
-          value="10, 40, 25, 80, 50, 30, 95">
+
+      <!-- Panel Interactivo Flotante -->
+      <div class="position-absolute top-0 end-0 bg-white border p-3 m-2 shadow-lg"
+        style="max-height: 460px; overflow-y: auto; opacity: 0.95; width: 330px; border-radius: 8px;">
+        <h6 class="fw-bold mb-3 text-dark">🎨 Gestor de Barras 3D</h6>
+        <div id="barsList" class="d-flex flex-column gap-2 mb-3">
+          <!-- Filas reactivas de JS -->
+        </div>
+        <button id="addBarBtn" class="btn btn-sm btn-success w-100 fw-bold shadow-sm">+ Añadir Barra</button>
       </div>
-      <p class="card-text text-muted"><small>Modifica los valores arriba y la gráfica se actualizará en tiempo
-          real.</small></p>
+    </div>
+
+    <div class="card-body">
+      <p class="card-text text-muted mb-0"><small>Agrega barras, cámbialas de color, ajusta sus etiquetas y observa la
+          vista en isométrica 3D interactuando automágicamente en tiempo real.</small></p>
     </div>
 
     <div class="card-footer text-muted">
